@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic Clock — 3×3 puzzle</title>
+<style>
+  :root {
+    --bg-primary:#ffffff;
+    --bg-secondary:#f5f4ef;
+    --bg-tertiary:#ebe9e1;
+    --bg-info:#e1ecf7;
+    --bg-warning:#faeeda;
+    --bg-success:#eaf3de;
+    --text-primary:#1f1e1c;
+    --text-secondary:#5f5e5a;
+    --text-tertiary:#888780;
+    --text-info:#185fa5;
+    --text-success:#3b6d11;
+    --border-tertiary:rgba(0,0,0,0.10);
+    --border-secondary:rgba(0,0,0,0.18);
+    --radius-md:8px;
+    --radius-lg:12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary:#1f1e1c;
+      --bg-secondary:#262522;
+      --bg-tertiary:#2f2e2a;
+      --bg-info:#0c447c;
+      --bg-warning:#412402;
+      --bg-success:#173404;
+      --text-primary:#ede9df;
+      --text-secondary:#b4b2a9;
+      --text-tertiary:#888780;
+      --text-info:#85b7eb;
+      --text-success:#97c459;
+      --border-tertiary:rgba(255,255,255,0.10);
+      --border-secondary:rgba(255,255,255,0.18);
+    }
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:48px 24px;
+    -webkit-font-smoothing:antialiased;
+  }
+  main { width:100%; max-width:520px; }
+
+  header { margin-bottom:24px; }
+  h1 {
+    font-size:22px;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    margin-bottom:4px;
+  }
+  .subtitle {
+    font-size:14px;
+    color:var(--text-secondary);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .size-tile {
+    display:inline-flex;
+    align-items:center;
+    background:var(--bg-secondary);
+    border:0.5px solid var(--border-tertiary);
+    border-radius:var(--radius-md);
+    overflow:hidden;
+    height:28px;
+  }
+  .size-tile button {
+    width:24px;
+    height:100%;
+    border:0;
+    background:transparent;
+    color:var(--text-primary);
+    font-size:16px;
+    line-height:1;
+    cursor:pointer;
+    font-family:inherit;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    transition:background 140ms ease;
+  }
+  .size-tile button:hover:not(:disabled) { background:var(--bg-tertiary); }
+  .size-tile button:disabled { opacity:0.35; cursor:not-allowed; }
+  .size-tile button:focus-visible { outline:2px solid var(--text-info); outline-offset:-2px; }
+  .size-tile .size-value {
+    min-width:46px;
+    text-align:center;
+    font-size:13px;
+    font-variant-numeric:tabular-nums;
+    color:var(--text-primary);
+    font-weight:500;
+    padding:0 4px;
+  }
+
+  .puzzle-wrap { padding:1rem 0; }
+  .row { display:flex; justify-content:space-between; padding:0 14px; gap:8px; }
+  .row.top { margin-bottom:10px; }
+  .row.bot { margin-top:10px; }
+  .wheel { display:flex; align-items:center; gap:6px; }
+  .wheel-label {
+    font-size:12px;
+    font-weight:500;
+    color:var(--text-tertiary);
+    min-width:22px;
+  }
+  .wheel button {
+    padding:6px 10px;
+    font-size:13px;
+    min-width:38px;
+    border-radius:var(--radius-md);
+    border:0.5px solid var(--border-secondary);
+    background:transparent;
+    color:var(--text-primary);
+    font-family:inherit;
+    cursor:pointer;
+    transition:background 140ms ease, transform 140ms ease;
+  }
+  .wheel button:hover { background:var(--bg-secondary); }
+  .wheel button:active { transform:scale(0.97); }
+  .wheel button:focus-visible { outline:2px solid var(--text-info); outline-offset:1px; }
+
+  .board-wrap { display:flex; justify-content:center; }
+  svg.board { width:100%; max-width:320px; height:auto; display:block; }
+
+  .clock-bg { fill:var(--bg-secondary); stroke:var(--border-tertiary); stroke-width:0.5; transition:fill 180ms ease; }
+  .clock-bg.engaged { fill:var(--bg-info); }
+  .clock-bg.flash { fill:var(--bg-warning); }
+  .tick { stroke:var(--text-tertiary); stroke-width:0.8; }
+  .tick-12 { stroke:var(--text-primary); stroke-width:1.5; }
+  .hand { stroke:var(--text-primary); stroke-width:2.5; stroke-linecap:round; }
+  .center-dot { fill:var(--text-primary); }
+
+  .pin { cursor:pointer; }
+  .pin-outer {
+    fill:var(--bg-tertiary);
+    stroke:var(--border-secondary);
+    stroke-width:0.5;
+    transition:fill 200ms ease, stroke 200ms ease;
+  }
+  .pin:hover .pin-outer { stroke:var(--text-info); }
+  .pin.up .pin-outer { fill:var(--text-info); stroke:var(--text-info); }
+  .pin-dot { fill:var(--bg-primary); opacity:0; transition:opacity 200ms ease; }
+  .pin.up .pin-dot { opacity:1; }
+
+  .actions {
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    align-items:center;
+    margin-top:20px;
+    flex-wrap:wrap;
+  }
+  .btn {
+    padding:8px 16px;
+    font-size:13px;
+    font-family:inherit;
+    border-radius:var(--radius-md);
+    border:0.5px solid var(--border-secondary);
+    background:transparent;
+    color:var(--text-primary);
+    cursor:pointer;
+    transition:background 140ms ease;
+  }
+  .btn:hover { background:var(--bg-secondary); }
+  .btn:focus-visible { outline:2px solid var(--text-info); outline-offset:1px; }
+  .status {
+    font-size:13px;
+    color:var(--text-secondary);
+    margin-left:8px;
+    min-width:90px;
+  }
+  .status.solved { color:var(--text-success); font-weight:500; }
+  .metric {
+    font-size:13px;
+    color:var(--text-secondary);
+    margin-right:8px;
+  }
+  .metric strong { color:var(--text-primary); font-weight:500; }
+
+  .legend {
+    margin-top:32px;
+    padding:20px 24px;
+    background:var(--bg-secondary);
+    border-radius:var(--radius-lg);
+  }
+  .legend h2 {
+    font-size:16px;
+    font-weight:500;
+    margin-bottom:10px;
+  }
+  .legend p {
+    font-size:14px;
+    line-height:1.7;
+    color:var(--text-secondary);
+    margin-bottom:8px;
+  }
+  .legend p:last-child { margin-bottom:0; }
+  .legend strong { color:var(--text-primary); font-weight:500; }
+  .legend kbd {
+    font-family:ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size:12px;
+    background:var(--bg-tertiary);
+    border:0.5px solid var(--border-secondary);
+    border-radius:4px;
+    padding:1px 6px;
+    color:var(--text-primary);
+    margin:0 1px;
+  }
+
+  .sr-only {
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Magic clock</h1>
+    <p class="subtitle">
+      <span class="size-tile" role="group" aria-label="Grid size">
+        <button type="button" id="size-dec" aria-label="Decrease grid size">‹</button>
+        <span class="size-value" id="size-value" aria-live="polite">3×3</span>
+        <button type="button" id="size-inc" aria-label="Increase grid size">›</button>
+      </span>
+      <span>puzzle — get all hands to 12.</span>
+    </p>
+  </header>
+
+  <h2 class="sr-only">Interactive magic clock puzzle with a configurable grid of clocks, interior pins, and 4 corner wheels.</h2>
+
+  <div class="puzzle-wrap">
+    <div class="row top">
+      <div class="wheel">
+        <span class="wheel-label">TL</span>
+        <button data-wheel="tl" data-dir="1" aria-label="TL plus one">+1</button>
+        <button data-wheel="tl" data-dir="-1" aria-label="TL minus one">−1</button>
+      </div>
+      <div class="wheel">
+        <button data-wheel="tr" data-dir="-1" aria-label="TR minus one">−1</button>
+        <button data-wheel="tr" data-dir="1" aria-label="TR plus one">+1</button>
+        <span class="wheel-label">TR</span>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <svg id="board" class="board" viewBox="0 0 300 300" aria-label="Grid of clocks with 4 corner pins"></svg>
+    </div>
+
+    <div class="row bot">
+      <div class="wheel">
+        <span class="wheel-label">BL</span>
+        <button data-wheel="bl" data-dir="1" aria-label="BL plus one">+1</button>
+        <button data-wheel="bl" data-dir="-1" aria-label="BL minus one">−1</button>
+      </div>
+      <div class="wheel">
+        <button data-wheel="br" data-dir="-1" aria-label="BR minus one">−1</button>
+        <button data-wheel="br" data-dir="1" aria-label="BR plus one">+1</button>
+        <span class="wheel-label">BR</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <span class="metric">Moves <strong id="move-count">0</strong></span>
+      <button class="btn" id="btn-scramble">Scramble</button>
+      <button class="btn" id="btn-reset">Reset</button>
+      <span class="status solved" id="status">Solved</span>
+    </div>
+  </div>
+
+  <section class="legend">
+    <h2>How it works</h2>
+    <p>An N×N grid of clocks has a <strong>pin</strong> at every interior corner where four clocks meet — (N−1)² pins in total. Click a pin to toggle it UP (blue) or DOWN.</p>
+    <p>Each wheel always rotates its own corner clock by one hour. Up-pins <em>chain</em>: any clock connected to the corner clock through up-pins rotates with it. Engaged clocks are tinted blue.</p>
+    <p>Keyboard: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> toggle the four corner pins.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const MIN_N = 3;
+  const MAX_N = 6;
+  const VIEW = 300;
+
+  // Derived per grid size N
+  let N = 3;
+  let CELL = VIEW / N;
+  let CLOCK_R = CELL * 0.40;
+  let TICK_OUT = CELL * 0.38;
+  let TICK_IN = CELL * 0.34;
+  let HAND_LEN = CELL * 0.28;
+  let CENTER_DOT_R = Math.max(1.5, CELL * 0.025);
+  let PIN_R = Math.max(7, CELL * 0.13);
+  let PIN_DOT_R = Math.max(2.5, CELL * 0.04);
+
+  let PIN_CLOCKS = {};   // pinKey -> [4 clock indices]
+  let WHEEL_CORNER = {}; // tl/tr/bl/br -> single clock index
+  let WHEEL_PIN = {};    // tl/tr/bl/br -> the corner pinKey (for keyboard 1-4)
+  let CLOCK_POS = [];    // [cx,cy] per clock
+  let PIN_POS = {};      // pinKey -> [x,y]
+  let PIN_KEYS = [];     // ordered list of all pin keys
+
+  // State (rebuilt on size change)
+  let state = { clocks: [], pins: {} };
+  let displayed = [];
+  let moveCount = 0;
+
+  const pinKey = (r, c) => 'p_' + r + '_' + c;
+
+  function recomputeGeometry() {
+    CELL = VIEW / N;
+    CLOCK_R = CELL * 0.40;
+    TICK_OUT = CELL * 0.38;
+    TICK_IN = CELL * 0.34;
+    HAND_LEN = CELL * 0.28;
+    CENTER_DOT_R = Math.max(1.5, CELL * 0.025);
+    PIN_R = Math.max(6, CELL * 0.13);
+    PIN_DOT_R = Math.max(2, CELL * 0.04);
+
+    CLOCK_POS = [];
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        CLOCK_POS.push([CELL * (c + 0.5), CELL * (r + 0.5)]);
+      }
+    }
+
+    const idx = (r, c) => r * N + c;
+    PIN_CLOCKS = {};
+    PIN_POS = {};
+    PIN_KEYS = [];
+    for (let r = 0; r < N - 1; r++) {
+      for (let c = 0; c < N - 1; c++) {
+        const k = pinKey(r, c);
+        PIN_KEYS.push(k);
+        PIN_CLOCKS[k] = [idx(r, c), idx(r, c + 1), idx(r + 1, c), idx(r + 1, c + 1)];
+        PIN_POS[k] = [CELL * (c + 1), CELL * (r + 1)];
+      }
+    }
+    WHEEL_CORNER = {
+      tl: idx(0, 0),     tr: idx(0, N - 1),
+      bl: idx(N - 1, 0), br: idx(N - 1, N - 1)
+    };
+    WHEEL_PIN = {
+      tl: pinKey(0, 0),       tr: pinKey(0, N - 2),
+      bl: pinKey(N - 2, 0),   br: pinKey(N - 2, N - 2)
+    };
+  }
+
+  function svgEl(name, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  function buildBoard() {
+    const board = document.getElementById('board');
+    while (board.firstChild) board.removeChild(board.firstChild);
+
+    for (let i = 0; i < N * N; i++) {
+      const [cx, cy] = CLOCK_POS[i];
+      const g = svgEl('g', { transform: `translate(${cx},${cy})` });
+      g.appendChild(svgEl('circle', {
+        class: 'clock-bg', 'data-idx': i, cx: 0, cy: 0, r: CLOCK_R.toFixed(2)
+      }));
+      for (let t = 0; t < 12; t++) {
+        const a = t * 30 * Math.PI / 180;
+        const sx = Math.sin(a), sy = -Math.cos(a);
+        const cls = t === 0 ? 'tick tick-12' : 'tick';
+        g.appendChild(svgEl('line', {
+          class: cls,
+          x1: (sx * TICK_IN).toFixed(2), y1: (sy * TICK_IN).toFixed(2),
+          x2: (sx * TICK_OUT).toFixed(2), y2: (sy * TICK_OUT).toFixed(2)
+        }));
+      }
+      const handRot = svgEl('g', { class: 'hand-rot', 'data-idx': i, transform: 'rotate(0)' });
+      handRot.appendChild(svgEl('line', {
+        class: 'hand', x1: 0, y1: 0, x2: 0, y2: -HAND_LEN.toFixed(2)
+      }));
+      g.appendChild(handRot);
+      g.appendChild(svgEl('circle', {
+        class: 'center-dot', cx: 0, cy: 0, r: CENTER_DOT_R.toFixed(2)
+      }));
+      board.appendChild(g);
+    }
+
+    Object.entries(PIN_POS).forEach(([name, [x, y]]) => {
+      const g = svgEl('g', {
+        class: 'pin', 'data-pin': name, role: 'button',
+        'aria-label': 'Toggle pin ' + name, tabindex: 0
+      });
+      g.appendChild(svgEl('circle', { class: 'pin-outer', cx: x, cy: y, r: PIN_R.toFixed(2) }));
+      g.appendChild(svgEl('circle', { class: 'pin-dot', cx: x, cy: y, r: PIN_DOT_R.toFixed(2) }));
+      g.addEventListener('click', () => togglePin(name));
+      g.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePin(name); }
+      });
+      board.appendChild(g);
+    });
+
+    // Restore hand positions from state
+    for (let i = 0; i < N * N; i++) {
+      setHandAngle(i, displayed[i]);
+    }
+  }
+
+  function setHandAngle(idx, deg) {
+    const el = document.querySelector('.hand-rot[data-idx="' + idx + '"]');
+    if (el) el.setAttribute('transform', 'rotate(' + deg.toFixed(2) + ')');
+  }
+
+  function tweenHand(idx, fromDeg, toDeg, duration) {
+    duration = duration || 360;
+    const start = performance.now();
+    const delta = toDeg - fromDeg;
+    function step(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const e = 1 - Math.pow(1 - t, 3);
+      setHandAngle(idx, fromDeg + delta * e);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function getAffected(wheel) {
+    // Flood-fill from the wheel's corner clock through every up-pin.
+    // A pin connects all 4 clocks in its 2x2 quadrant.
+    const start = WHEEL_CORNER[wheel];
+    const visited = new Set([start]);
+    const queue = [start];
+    while (queue.length) {
+      const i = queue.shift();
+      const r = Math.floor(i / N), c = i % N;
+      // Check the (up to) 4 pins touching this clock
+      const candPins = [
+        [r - 1, c - 1], [r - 1, c],
+        [r,     c - 1], [r,     c]
+      ];
+      for (const [pr, pc] of candPins) {
+        if (pr < 0 || pc < 0 || pr > N - 2 || pc > N - 2) continue;
+        if (!state.pins[pinKey(pr, pc)]) continue;
+        for (const ni of PIN_CLOCKS[pinKey(pr, pc)]) {
+          if (!visited.has(ni)) { visited.add(ni); queue.push(ni); }
+        }
+      }
+    }
+    return [...visited];
+  }
+
+  function turn(wheel, dir) {
+    const aff = getAffected(wheel);
+    aff.forEach(i => {
+      state.clocks[i] = (state.clocks[i] + dir + 12) % 12;
+      const newDeg = displayed[i] + dir * 30;
+      tweenHand(i, displayed[i], newDeg, 340);
+      displayed[i] = newDeg;
+    });
+    aff.forEach(i => {
+      const el = document.querySelector('.clock-bg[data-idx="' + i + '"]');
+      if (el) {
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 320);
+      }
+    });
+    moveCount++;
+    updateUI();
+  }
+
+  function togglePin(name) {
+    state.pins[name] = !state.pins[name];
+    updateUI();
+  }
+
+  function isSolved() { return state.clocks.every(c => c === 0); }
+
+  function freshState() {
+    const pins = {};
+    PIN_KEYS.forEach(k => { pins[k] = false; });
+    state = {
+      clocks: new Array(N * N).fill(0),
+      pins: pins
+    };
+    displayed = new Array(N * N).fill(0);
+    moveCount = 0;
+  }
+
+  function reset() {
+    state.clocks = new Array(N * N).fill(0);
+    PIN_KEYS.forEach(k => { state.pins[k] = false; });
+    moveCount = 0;
+    for (let i = 0; i < N * N; i++) {
+      let from = ((displayed[i] % 360) + 360) % 360;
+      let delta = -from;
+      if (delta < -180) delta += 360;
+      const target = from + delta;
+      tweenHand(i, from, target, 600);
+      displayed[i] = target;
+    }
+    updateUI();
+  }
+
+  function scramble() {
+    const iters = 18 + N * N * 2;
+    for (let i = 0; i < iters; i++) {
+      if (Math.random() < 0.4 && PIN_KEYS.length > 0) {
+        const k = PIN_KEYS[Math.floor(Math.random() * PIN_KEYS.length)];
+        state.pins[k] = !state.pins[k];
+      } else {
+        const w = ['tl','tr','bl','br'][Math.floor(Math.random() * 4)];
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        getAffected(w).forEach(idx => {
+          state.clocks[idx] = (state.clocks[idx] + dir + 12) % 12;
+        });
+      }
+    }
+    if (isSolved()) state.clocks[0] = 3;
+    moveCount = 0;
+    for (let i = 0; i < N * N; i++) {
+      const target = state.clocks[i] * 30;
+      let from = ((displayed[i] % 360) + 360) % 360;
+      let delta = target - from;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      const newDeg = from + delta;
+      tweenHand(i, from, newDeg, 680);
+      displayed[i] = newDeg;
+    }
+    updateUI();
+  }
+
+  function updateUI() {
+    Object.entries(state.pins).forEach(([name, up]) => {
+      const el = document.querySelector('.pin[data-pin="' + name + '"]');
+      if (el) el.classList.toggle('up', up);
+    });
+    const engaged = new Set();
+    Object.entries(state.pins).forEach(([name, up]) => {
+      if (up) PIN_CLOCKS[name].forEach(i => engaged.add(i));
+    });
+    document.querySelectorAll('.clock-bg').forEach(el => {
+      const idx = parseInt(el.getAttribute('data-idx'), 10);
+      el.classList.toggle('engaged', engaged.has(idx));
+    });
+    document.getElementById('move-count').textContent = moveCount;
+    const statusEl = document.getElementById('status');
+    if (isSolved()) {
+      statusEl.textContent = 'Solved';
+      statusEl.classList.add('solved');
+    } else {
+      statusEl.textContent = 'In progress';
+      statusEl.classList.remove('solved');
+    }
+  }
+
+  function setSize(n) {
+    n = Math.max(MIN_N, Math.min(MAX_N, n));
+    if (n === N && CLOCK_POS.length === n * n) return;
+    N = n;
+    document.title = 'Magic Clock — ' + N + '×' + N + ' puzzle';
+    document.getElementById('size-value').textContent = N + '×' + N;
+    document.getElementById('size-dec').disabled = (N <= MIN_N);
+    document.getElementById('size-inc').disabled = (N >= MAX_N);
+    recomputeGeometry();
+    freshState();
+    buildBoard();
+    updateUI();
+  }
+
+  // Init
+  recomputeGeometry();
+  freshState();
+  buildBoard();
+  updateUI();
+  document.getElementById('size-value').textContent = N + '×' + N;
+  document.getElementById('size-dec').disabled = (N <= MIN_N);
+  document.getElementById('size-inc').disabled = (N >= MAX_N);
+
+  document.querySelectorAll('[data-wheel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      turn(btn.dataset.wheel, parseInt(btn.dataset.dir, 10));
+    });
+  });
+  document.getElementById('btn-scramble').addEventListener('click', scramble);
+  document.getElementById('btn-reset').addEventListener('click', reset);
+  document.getElementById('size-dec').addEventListener('click', () => setSize(N - 1));
+  document.getElementById('size-inc').addEventListener('click', () => setSize(N + 1));
+
+  const KEY_WHEELS = { '1':'tl', '2':'tr', '3':'bl', '4':'br' };
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (KEY_WHEELS[e.key]) {
+      e.preventDefault();
+      togglePin(WHEEL_PIN[KEY_WHEELS[e.key]]);
+    }
+  });
+})();
+</script>
+</body>
+</html>
