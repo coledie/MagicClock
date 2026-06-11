@@ -577,14 +577,14 @@
     recomputeGeometry();
     freshState();
     buildBoard();
-    updateUI();
+    scramble();
   }
 
   // Init
   recomputeGeometry();
   freshState();
   buildBoard();
-  updateUI();
+  scramble();
   document.getElementById('size-value').textContent = N + '×' + N;
   document.getElementById('size-dec').disabled = (N <= MIN_N);
   document.getElementById('size-inc').disabled = (N >= MAX_N);

@@ -2,6 +2,8 @@
 
 A single-file, browser-only demonstrator of a Rubik's-Clock-style puzzle. Open `magic-clock.html` in any modern browser — no build step, no dependencies.
 
+![Screenshot of the Magic Clock puzzle showing a 5×5 grid of clock faces with corner wheels, pins, and Scramble / Reset controls.](board.png)
+
 ## Design
 
 ### Aesthetic direction
